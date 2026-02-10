@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import pdfplumber
 import re
+import io
 
 app = FastAPI()
 
@@ -13,15 +14,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ✅ Regex مظبوط: (123456) أو (1234567)
 CODE_RE = re.compile(r"\((\d{5,7})\)")
 
 def read_pdf_text_bytes(data: bytes) -> str:
-    import io
     text_pages = []
     with pdfplumber.open(io.BytesIO(data)) as pdf:
         for page in pdf.pages:
             txt = page.extract_text() or ""
             text_pages.append(txt)
+    # ✅ newline حقيقي
     return "\n".join(text_pages)
 
 def split_blocks(text: str):
@@ -72,7 +74,7 @@ async def extract_pdf(
 
         return {
             "success": True,
-            "codes": list(sorted(set(codes))),
+            "codes": sorted(set(codes)),
             "brands": extracted_brands,
         }
     except Exception as e:
