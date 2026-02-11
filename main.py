@@ -14,8 +14,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ أكواد رقمية 5–8 أرقام جوه أقواس: (242140)
-CODE_RE = re.compile(r"\((\d{5,8})\)")
+# ✅ أي رقم سداسي مستقل في النص
+CODE_RE = re.compile(r"\b(\d{6})\b")
 
 
 def load_pdf_text_from_bytes(data: bytes) -> str:
@@ -32,11 +32,12 @@ def load_pdf_text_from_bytes(data: bytes) -> str:
 
 
 def extract_codes(text: str):
-    # يطلع كل الأرقام بين الأقواس
+    """يرجع كل الأكواد السداسية الموجودة في أي سطر."""
     return sorted({m.group(1) for m in CODE_RE.finditer(text)})
 
 
 def extract_present_brands(text: str, known_brands):
+    """يبحث عن البراندات الجاية من الفرونت جوه النص."""
     upper_text = text.upper()
     found = set()
     for b in known_brands:
@@ -52,11 +53,15 @@ def extract_present_brands(text: str, known_brands):
 
 def extract_brands_from_buy_lines(text: str):
     """
-    أمثلة: Buy 1 DOVE Get 1 @ SAR 5.00 Feb, 25 - Mar, 05
-    نستخرج DOVE
+    يمسك السطور اللي بالشكل:
+    Buy 1 DOVE Get 1 @ SAR 5.00 ...
+    بشرط إن الكارت مفيهوش كود سداسي.
     """
     brands = set()
     for line in text.split("\n"):
+        # لو السطر فيه كود سداسي، يبقى كارت بكود نسيبه للكودز
+        if CODE_RE.search(line):
+            continue
         m = re.search(r"Buy\s+1\s+([A-Za-z0-9& ]+?)\s+Get\s+1", line, re.IGNORECASE)
         if m:
             brand = m.group(1).strip()
@@ -74,16 +79,19 @@ async def extract_pdf(
         data = await file.read()
         text = load_pdf_text_from_bytes(data)
 
-        # 1) الأكواد من الأقواس (242140)
+        # 1) أولاً: استخرج كل الأكواد السداسية من أي كارت فيه كود
         codes = extract_codes(text)
 
-        # 2) البراندات لو مفيش أكواد
+        # 2) لو الـ PDF ده مفيهوش ولا كود → ساعتها نشتغل بقى على البراندات
         known_brands = [x.strip() for x in brands.split(",") if x.strip()]
         extracted_brands = []
 
         if not codes:
+            # أ) حاول بالبراندات اللي جاية من الفرونت
             if known_brands:
                 extracted_brands = extract_present_brands(text, known_brands)
+
+            # ب) لو لسه فاضي → حاول من Buy 1 X Get 1
             if not extracted_brands:
                 extracted_brands = extract_brands_from_buy_lines(text)
 
