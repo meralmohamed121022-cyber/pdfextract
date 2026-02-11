@@ -14,7 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# هنسيب الـ regex والـ functions زي ما هي عشان نستخدمها بعد الـ debug لو حبيت
+# ✅ أكواد رقمية 5–8 أرقام جوه أقواس: (242140)
 CODE_RE = re.compile(r"\((\d{5,8})\)")
 
 
@@ -32,6 +32,7 @@ def load_pdf_text_from_bytes(data: bytes) -> str:
 
 
 def extract_codes(text: str):
+    # يطلع كل الأرقام بين الأقواس
     return sorted({m.group(1) for m in CODE_RE.finditer(text)})
 
 
@@ -50,6 +51,10 @@ def extract_present_brands(text: str, known_brands):
 
 
 def extract_brands_from_buy_lines(text: str):
+    """
+    أمثلة: Buy 1 DOVE Get 1 @ SAR 5.00 Feb, 25 - Mar, 05
+    نستخرج DOVE
+    """
     brands = set()
     for line in text.split("\n"):
         m = re.search(r"Buy\s+1\s+([A-Za-z0-9& ]+?)\s+Get\s+1", line, re.IGNORECASE)
@@ -69,15 +74,6 @@ async def extract_pdf(
         data = await file.read()
         text = load_pdf_text_from_bytes(data)
 
-        # 🔍 DEBUG: مؤقتًا رجّع أول 2000 حرف من النص بدل الأكواد
-        return {
-            "success": True,
-            "snippet": text[:2000]
-        }
-
-        """
-        # الكود العادي هنرجّعه بعد ما نشوف شكل النص:
-
         # 1) الأكواد من الأقواس (242140)
         codes = extract_codes(text)
 
@@ -96,7 +92,6 @@ async def extract_pdf(
             "codes": codes,
             "brands": extracted_brands,
         }
-        """
     except Exception as e:
         return {
             "success": False,
