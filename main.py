@@ -86,6 +86,18 @@ async def extract_pdf(
         # 1) استخرج كل الأكواد السداسية من الكروت اللي فيها أكواد
         codes = extract_codes(text)
 
+        # Debug: عدد الأكواد وأول 20 كود
+        codes_count = len(codes)
+        codes_sample = codes[:20]
+
+        # Debug: أول 10 سطور فيها كود
+        lines_with_codes = []
+        for line in text.split("\n"):
+            if CODE_RE.search(line):
+                lines_with_codes.append(line.strip())
+                if len(lines_with_codes) >= 10:
+                    break
+
         # 2) لو الملف ده مافهوش ولا كود → نطلع البراندات
         known_brands = [x.strip() for x in brands.split(",") if x.strip()]
         extracted_brands = []
@@ -102,11 +114,18 @@ async def extract_pdf(
             "success": True,
             "codes": codes,
             "brands": extracted_brands,
+            "debug": {
+                "codes_count": codes_count,
+                "codes_sample": codes_sample,
+                "lines_with_codes": lines_with_codes,
+                "text_snippet": text[:1000]
+            }
         }
     except Exception as e:
         return {
             "success": False,
             "message": str(e),
             "codes": [],
-            "brands": []
+            "brands": [],
+            "debug": {}
         }
