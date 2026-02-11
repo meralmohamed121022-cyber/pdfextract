@@ -40,7 +40,7 @@ def extract_codes(text: str):
 def extract_present_brands(text: str, known_brands):
     """
     يشيك البراندات اللي جايه من الفرونت (productsDB) جوه النص.
-    useful لو عندك ملف بدون أكواد وتبغى تحدد براندات عروض معينة.
+    نستخدمها لو الملف مافهوش ولا كود.
     """
     upper_text = text.upper()
     found = set()
@@ -63,7 +63,7 @@ def extract_brands_from_buy_lines(text: str):
     """
     brands = set()
     for line in text.split("\n"):
-        # لو السطر فيه كود، يبقى كرت بكود نسيبه للكودز
+        # لو السطر فيه كود، يبقى كرت بكود نسيبه للأكواد
         if CODE_RE.search(line):
             continue
         m = re.search(r"Buy\s+1\s+([A-Za-z0-9& ]+?)\s+Get\s+1", line, re.IGNORECASE)
@@ -86,7 +86,7 @@ async def extract_pdf(
         # 1) استخرج كل الأكواد السداسية من الكروت اللي فيها أكواد
         codes = extract_codes(text)
 
-        # 2) لو الملف ده مفيهوش ولا كود → نطلع البراندات
+        # 2) لو الملف ده مافهوش ولا كود → نطلع البراندات
         known_brands = [x.strip() for x in brands.split(",") if x.strip()]
         extracted_brands = []
 
@@ -94,7 +94,7 @@ async def extract_pdf(
             # أ) براندات من الـ DB لو بعتها من الفرونت
             if known_brands:
                 extracted_brands = extract_present_brands(text, known_brands)
-            # ب) لو لسه فاضي → from Buy 1 X Get 1 lines
+            # ب) لو لسه فاضي → براند من Buy 1 X Get 1
             if not extracted_brands:
                 extracted_brands = extract_brands_from_buy_lines(text)
 
