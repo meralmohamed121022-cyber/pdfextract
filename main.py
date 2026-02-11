@@ -14,7 +14,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ✅ Regex سليم: رقم سداسي مستقل
 CODE_RE = re.compile(r"\b(\d{6})\b")
+
 
 def load_pdf_text_from_bytes(data: bytes) -> str:
     reader = PdfReader(io.BytesIO(data))
@@ -22,14 +24,17 @@ def load_pdf_text_from_bytes(data: bytes) -> str:
     for page in reader.pages:
         t = page.extract_text() or ""
         pages_text.append(t)
+    # ✅ newlines حقيقية
     text = "\n".join(pages_text)
     text = text.replace("\r", "\n")
     text = re.sub(r"[ \t\u00a0]+", " ", text)
     text = re.sub(r"\n+", "\n", text)
     return text
 
+
 def extract_codes(text: str):
-    return sorted(set(m.group(1) for m in CODE_RE.finditer(text)))
+    return sorted({m.group(1) for m in CODE_RE.finditer(text)})
+
 
 def extract_present_brands(text: str, known_brands):
     upper_text = text.upper()
@@ -43,6 +48,7 @@ def extract_present_brands(text: str, known_brands):
         if name.upper() in upper_text:
             found.add(name)
     return sorted(found)
+
 
 @app.post("/api/extract-pdf")
 async def extract_pdf(
