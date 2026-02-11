@@ -14,11 +14,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ أي رقم سداسي مستقل في النص
+# ✅ أي رقم سداسي مستقل في النص (107338, 206746, 234549, ...)
 CODE_RE = re.compile(r"\b(\d{6})\b")
 
 
 def load_pdf_text_from_bytes(data: bytes) -> str:
+    """قراءة كل صفحات الـ PDF كنص واحد منظم."""
     reader = PdfReader(io.BytesIO(data))
     pages_text = []
     for page in reader.pages:
@@ -32,12 +33,15 @@ def load_pdf_text_from_bytes(data: bytes) -> str:
 
 
 def extract_codes(text: str):
-    """يرجع كل الأكواد السداسية الموجودة في أي سطر."""
+    """يرجع كل الأكواد السداسية الموجودة في أي مكان في النص."""
     return sorted({m.group(1) for m in CODE_RE.finditer(text)})
 
 
 def extract_present_brands(text: str, known_brands):
-    """يبحث عن البراندات الجاية من الفرونت جوه النص."""
+    """
+    يشيك البراندات اللي جايه من الفرونت (productsDB) جوه النص.
+    useful لو عندك ملف بدون أكواد وتبغى تحدد براندات عروض معينة.
+    """
     upper_text = text.upper()
     found = set()
     for b in known_brands:
@@ -55,11 +59,11 @@ def extract_brands_from_buy_lines(text: str):
     """
     يمسك السطور اللي بالشكل:
     Buy 1 DOVE Get 1 @ SAR 5.00 ...
-    بشرط إن الكارت مفيهوش كود سداسي.
+    بشرط إن السطر نفسه ما فيهوش كود سداسي (يعني كرت بدون كود).
     """
     brands = set()
     for line in text.split("\n"):
-        # لو السطر فيه كود سداسي، يبقى كارت بكود نسيبه للكودز
+        # لو السطر فيه كود، يبقى كرت بكود نسيبه للكودز
         if CODE_RE.search(line):
             continue
         m = re.search(r"Buy\s+1\s+([A-Za-z0-9& ]+?)\s+Get\s+1", line, re.IGNORECASE)
@@ -79,19 +83,18 @@ async def extract_pdf(
         data = await file.read()
         text = load_pdf_text_from_bytes(data)
 
-        # 1) أولاً: استخرج كل الأكواد السداسية من أي كارت فيه كود
+        # 1) استخرج كل الأكواد السداسية من الكروت اللي فيها أكواد
         codes = extract_codes(text)
 
-        # 2) لو الـ PDF ده مفيهوش ولا كود → ساعتها نشتغل بقى على البراندات
+        # 2) لو الملف ده مفيهوش ولا كود → نطلع البراندات
         known_brands = [x.strip() for x in brands.split(",") if x.strip()]
         extracted_brands = []
 
         if not codes:
-            # أ) حاول بالبراندات اللي جاية من الفرونت
+            # أ) براندات من الـ DB لو بعتها من الفرونت
             if known_brands:
                 extracted_brands = extract_present_brands(text, known_brands)
-
-            # ب) لو لسه فاضي → حاول من Buy 1 X Get 1
+            # ب) لو لسه فاضي → from Buy 1 X Get 1 lines
             if not extracted_brands:
                 extracted_brands = extract_brands_from_buy_lines(text)
 
