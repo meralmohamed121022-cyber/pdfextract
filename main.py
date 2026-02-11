@@ -40,7 +40,7 @@ def extract_codes(text: str):
 def extract_present_brands(text: str, known_brands):
     """
     يشيك البراندات اللي جايه من الفرونت (productsDB) جوه النص.
-    نستخدمها لو الملف مافهوش ولا كود.
+    نستخدمها كجزء من البراندات لو الملف فيه كروت بدون كود.
     """
     upper_text = text.upper()
     found = set()
@@ -86,46 +86,23 @@ async def extract_pdf(
         # 1) استخرج كل الأكواد السداسية من الكروت اللي فيها أكواد
         codes = extract_codes(text)
 
-        # Debug: عدد الأكواد وأول 20 كود
-        codes_count = len(codes)
-        codes_sample = codes[:20]
-
-        # Debug: أول 10 سطور فيها كود
-        lines_with_codes = []
-        for line in text.split("\n"):
-            if CODE_RE.search(line):
-                lines_with_codes.append(line.strip())
-                if len(lines_with_codes) >= 10:
-                    break
-
-        # 2) لو الملف ده مافهوش ولا كود → نطلع البراندات
+        # 2) استخرج البراندات من الكروت اللي مافيهاش كود + من قائمة البراندات لو مبعوتة
         known_brands = [x.strip() for x in brands.split(",") if x.strip()]
-        extracted_brands = []
 
-        if not codes:
-            # أ) براندات من الـ DB لو بعتها من الفرونت
-            if known_brands:
-                extracted_brands = extract_present_brands(text, known_brands)
-            # ب) لو لسه فاضي → براند من Buy 1 X Get 1
-            if not extracted_brands:
-                extracted_brands = extract_brands_from_buy_lines(text)
+        brands_from_db = extract_present_brands(text, known_brands) if known_brands else []
+        brands_from_buy = extract_brands_from_buy_lines(text)
+
+        all_brands = sorted({*brands_from_db, *brands_from_buy})
 
         return {
             "success": True,
             "codes": codes,
-            "brands": extracted_brands,
-            "debug": {
-                "codes_count": codes_count,
-                "codes_sample": codes_sample,
-                "lines_with_codes": lines_with_codes,
-                "text_snippet": text[:1000]
-            }
+            "brands": all_brands,
         }
     except Exception as e:
         return {
             "success": False,
             "message": str(e),
             "codes": [],
-            "brands": [],
-            "debug": {}
+            "brands": []
         }
