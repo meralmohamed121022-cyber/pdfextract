@@ -83,11 +83,8 @@ async def extract_pdf(
         extracted_brands = []
 
         if not codes:
-            # أ) حاول من قائمة البراندات الجاية من الفرونت
             if known_brands:
                 extracted_brands = extract_present_brands(text, known_brands)
-
-            # ب) لو لسه فاضي → حاول من سطور Buy 1 Get 1
             if not extracted_brands:
                 extracted_brands = extract_brands_from_buy_lines(text)
 
