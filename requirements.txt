@@ -1,4 +1,4 @@
 fastapi
-uvicorn
+uvicorn[standard]
+PyPDF2
 python-multipart
-pdfplumber
